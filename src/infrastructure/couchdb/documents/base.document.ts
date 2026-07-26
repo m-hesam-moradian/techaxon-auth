@@ -5,4 +5,5 @@ export interface BaseDocument {
   type: string;
 
   createdAt: string;
+  updatedAt: string;
 }
