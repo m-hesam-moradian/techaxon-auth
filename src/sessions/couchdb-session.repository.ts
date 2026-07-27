@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { CouchDbService } from '../infrastructure/couchdb/couchdb.service';
 
 import type { SessionDocument } from '../infrastructure/couchdb/documents/session.document';
+import { isSessionDocument } from '../infrastructure/couchdb/documents/document.guards';
 
 import {
   SessionRepository,
@@ -22,7 +23,11 @@ export class CouchDbSessionRepository implements SessionRepository {
   }
 
   /**
-   * Create a new session.
+   * ------------------------------------------------------------------------
+   * Create Session
+   * ------------------------------------------------------------------------
+   *
+   * Creates a new session document.
    */
   async createSession(sessionId: string, session: CreateSessionData): Promise<RepositoryResult> {
     const response = await this.db.insert({
@@ -37,13 +42,21 @@ export class CouchDbSessionRepository implements SessionRepository {
   }
 
   /**
-   * Find session by id.
+   * ------------------------------------------------------------------------
+   * Find Session By Id
+   * ------------------------------------------------------------------------
+   *
+   * Returns the session if it exists.
    */
   async findById(sessionId: string): Promise<SessionDocument | null> {
     try {
       const document = await this.db.get(sessionId);
 
-      return document as SessionDocument;
+      if (!isSessionDocument(document)) {
+        return null;
+      }
+
+      return document;
     } catch (error: unknown) {
       if (
         typeof error === 'object' &&
@@ -59,7 +72,11 @@ export class CouchDbSessionRepository implements SessionRepository {
   }
 
   /**
-   * Find all sessions of a user.
+   * ------------------------------------------------------------------------
+   * Find Sessions By User
+   * ------------------------------------------------------------------------
+   *
+   * Returns every session belonging to a user.
    */
   async findByUserId(userId: string): Promise<SessionDocument[]> {
     const result = await this.db.find({
@@ -69,11 +86,23 @@ export class CouchDbSessionRepository implements SessionRepository {
       },
     });
 
-    return result.docs as SessionDocument[];
+    const sessions: SessionDocument[] = [];
+
+    for (const document of result.docs) {
+      if (isSessionDocument(document)) {
+        sessions.push(document);
+      }
+    }
+
+    return sessions;
   }
 
   /**
-   * Find a session using the refresh token hash.
+   * ------------------------------------------------------------------------
+   * Find Session By Refresh Token Hash
+   * ------------------------------------------------------------------------
+   *
+   * Refresh token hashes are unique.
    */
   async findByRefreshTokenHash(refreshTokenHash: string): Promise<SessionDocument | null> {
     const result = await this.db.find({
@@ -88,11 +117,21 @@ export class CouchDbSessionRepository implements SessionRepository {
       return null;
     }
 
-    return result.docs[0] as SessionDocument;
+    const document = result.docs[0];
+
+    if (!isSessionDocument(document)) {
+      return null;
+    }
+
+    return document;
   }
 
   /**
-   * Update an existing session.
+   * ------------------------------------------------------------------------
+   * Update Session
+   * ------------------------------------------------------------------------
+   *
+   * Persists changes to an existing session document.
    */
   async updateSession(session: SessionDocument): Promise<RepositoryResult> {
     const response = await this.db.insert(session);
@@ -104,7 +143,11 @@ export class CouchDbSessionRepository implements SessionRepository {
   }
 
   /**
-   * Revoke one session.
+   * ------------------------------------------------------------------------
+   * Revoke Session
+   * ------------------------------------------------------------------------
+   *
+   * Revokes a single session.
    */
   async revokeSession(sessionId: string): Promise<void> {
     const session = await this.findById(sessionId);
@@ -113,15 +156,21 @@ export class CouchDbSessionRepository implements SessionRepository {
       return;
     }
 
+    const now = new Date().toISOString();
+
     session.status = 'revoked';
-    session.revokedAt = new Date().toISOString();
-    session.updatedAt = new Date().toISOString();
+    session.revokedAt = now;
+    session.updatedAt = now;
 
     await this.db.insert(session);
   }
 
   /**
-   * Revoke every active session of a user.
+   * ------------------------------------------------------------------------
+   * Revoke All User Sessions
+   * ------------------------------------------------------------------------
+   *
+   * Revokes every session belonging to a user.
    */
   async revokeAllUserSessions(userId: string): Promise<void> {
     const sessions = await this.findByUserId(userId);
@@ -138,7 +187,11 @@ export class CouchDbSessionRepository implements SessionRepository {
   }
 
   /**
-   * Permanently delete one session.
+   * ------------------------------------------------------------------------
+   * Delete Session
+   * ------------------------------------------------------------------------
+   *
+   * Permanently removes a session document.
    */
   async deleteSession(sessionId: string): Promise<void> {
     const session = await this.findById(sessionId);
@@ -151,9 +204,14 @@ export class CouchDbSessionRepository implements SessionRepository {
   }
 
   /**
-   * Delete expired sessions.
+   * ------------------------------------------------------------------------
+   * Delete Expired Sessions
+   * ------------------------------------------------------------------------
    *
-   * Returns the number of deleted sessions.
+   * Deletes every session whose expiration date
+   * is older than the provided timestamp.
+   *
+   * Returns the number of deleted documents.
    */
   async deleteExpiredSessions(before: string): Promise<number> {
     const result = await this.db.find({
@@ -167,7 +225,7 @@ export class CouchDbSessionRepository implements SessionRepository {
 
     let deleted = 0;
 
-    for (const session of result.docs as SessionDocument[]) {
+    for (const session of result.docs.filter(isSessionDocument)) {
       if (!session._id || !session._rev) {
         continue;
       }
