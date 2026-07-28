@@ -52,3 +52,12 @@ export class SessionService {
     };
   }
 }
+
+// findById()
+// findByUserId()
+// findByRefreshTokenHash()
+// updateSession()
+// revokeSession()
+// revokeAllUserSessions()
+// deleteSession()
+// deleteExpiredSessions()
