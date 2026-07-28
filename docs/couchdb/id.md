@@ -13,16 +13,27 @@ verification-token:01987d8e-6bc1-7b32-b6c2-6f0d1d5fd5ab
 audit:01987d8f-0ef9-75aa-95e4-4c59e16cbcd1
 
 # jwt
+Access
+
 {
-  "sub": "user:01987d8c-a54c-74af-89fa-6a3e31dcb1b2",
-  "sid": "session:01987d8d-4d7e-74fa-a8a0-d18d82bb2d93",
+  "sub": "user:...",
+  "sid": "session:...",
   "type": "access"
 }
 
+Refresh
+
 {
-  "sub": "user:01987d8c-a54c-74af-89fa-6a3e31dcb1b2",
-  "sid": "session:01987d8d-4d7e-74fa-a8a0-d18d82bb2d93",
+  "sub": "user:...",
+  "sid": "session:...",
   "type": "refresh"
+}
+
+Verification
+
+{
+  "sub": "user:...",
+  "type": "verification"
 }
 
 Suppose the user logs out or you rotate the Refresh Token. If you only have the sub (user ID) in the JWT, you can't figure out which Session this token belongs to.

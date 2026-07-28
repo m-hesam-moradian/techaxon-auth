@@ -5,7 +5,8 @@ import couchdbConfig from './config/couchdb.config';
 
 import { CouchdbModule } from './infrastructure/couchdb/couchdb.module';
 import { AuthModule } from './auth/auth.module';
-import { SessionModule } from './sessions/session.module'; // <-- Added our Session module
+import { UsersModule } from './users/users.module';
+import { SessionModule } from './sessions/session.module';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -19,7 +20,8 @@ import { AppService } from './app.service';
 
     CouchdbModule,
     AuthModule,
-    SessionModule, // <-- Turned it on here!
+    UsersModule,
+    SessionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

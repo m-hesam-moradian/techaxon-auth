@@ -4,7 +4,6 @@ import { Injectable } from '@nestjs/common';
 import { v7 as uuidv7 } from 'uuid';
 
 import { SessionRepository, type CreateSessionData } from './session.repository';
-
 import type { SessionDocument } from '../infrastructure/couchdb/documents/session.document';
 
 @Injectable()
@@ -20,36 +19,41 @@ export class SessionService {
     expiresAt: string,
   ): Promise<SessionDocument> {
     const now = new Date().toISOString();
-
     const sessionId = `session:${uuidv7()}`;
 
-    const session: CreateSessionData = {
+    const sessionData: CreateSessionData = {
       type: 'session',
-
       userId,
-
       refreshTokenHash,
-
       status: 'active',
-
       expiresAt,
-
       lastAccessedAt: now,
-
       createdAt: now,
-
       updatedAt: now,
     };
 
-    const result = await this.sessionRepository.createSession(sessionId, session);
+    const result = await this.sessionRepository.createSession(sessionId, sessionData);
 
     return {
       _id: result.id,
-
       _rev: result.rev,
-
-      ...session,
+      ...sessionData,
     };
+  }
+
+  /**
+   * Finds a session by its ID.
+   */
+  async findSessionById(sessionId: string): Promise<SessionDocument | null> {
+    return await this.sessionRepository.findById(sessionId);
+  }
+
+  /**
+   * Revokes a session by delegate to repository or updating status.
+   */
+  async revokeSession(sessionId: string): Promise<void> {
+    // از متد مستقیم ریپازیتوری شما استفاده می‌کند
+    await this.sessionRepository.revokeSession(sessionId);
   }
 }
 
