@@ -1,0 +1,37 @@
+### 5a. Access Protected Route - Success Case
+# @name getProfileSuccess
+GET http://localhost:3000/auth/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyOjUzZWJjMWIwLWFiNDItNDM1ZS04MDlmLTU3OTk3MDFlMTE1OSIsInNpZCI6InNlc3Npb246YWRkMjRjN2UtZjQzNC00MmYxLWFlOTUtMWMzMTM0NDY3NzlmIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc4NTMzMTk1MiwiZXhwIjoxNzg1MzMyODUyLCJhdWQiOiJ0ZWNoYXhvbi1hcGkiLCJpc3MiOiJ0ZWNoYXhvbi1pZHAifQ.ynizC9lLHCV17x6FFowovTzADvNAaiEvXqhtqqt28rk 
+Content-Type: application/json
+
+###
+/*
+===================================================================
+EXPECTED API RESPONSE (200 OK):
+===================================================================
+{
+  "userId": "user:53ebc1b0-ab42-435e-809f-5799701e1159",
+  "sessionId": "session:add24c7e-f434-42f1-ae95-1c313446779f",
+  "email": "saeed@example.com",
+  "username": "saeed"
+}
+*/
+
+
+### 5b. Access Protected Route - Unauthorized (Missing or Expired Token)
+# @name getProfileUnauthorized
+GET http://localhost:3000/auth/me
+# Authorization header is intentionally omitted or invalid
+Content-Type: application/json
+
+###
+
+/*
+===================================================================
+EXPECTED API RESPONSE (401 Unauthorized):
+===================================================================
+{
+  "statusCode": 401,
+  "message": "Unauthorized"
+}
+*/
