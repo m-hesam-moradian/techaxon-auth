@@ -6,6 +6,8 @@ interface MigrationDocument {
   type: 'migration';
   name: string;
   executedAt: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 @Injectable()
@@ -30,11 +32,15 @@ export class MigrationRepository {
   }
 
   async save(name: string): Promise<void> {
+    const now = new Date().toISOString();
+
     const document: MigrationDocument = {
       _id: `${this.migrationPrefix}${name}`,
       type: 'migration',
       name,
-      executedAt: new Date().toISOString(),
+      executedAt: now,
+      createdAt: now,
+      updatedAt: now,
     };
 
     await this.db.insert(document);

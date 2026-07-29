@@ -151,32 +151,32 @@ export class AuthService {
     // 4. Set expiration for the refresh token & session (7 days)
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    // Generate temporary raw token to create hash
-    const tempSid = randomUUID();
-    const rawRefreshToken = this.tokenService.generateRefreshToken({
-      sub: userId,
-      sid: tempSid,
-      type: 'refresh',
-    });
+    // 5. Generate FIXED Session ID upfront (یکبار برای همیشه)
+    const sessionId = `session:${randomUUID()}`;
 
-    const refreshTokenHash = await bcrypt.hash(rawRefreshToken, 10);
-
-    // 5. Create session in DB matching SessionService signature (userId, refreshTokenHash, expiresAt)
-    const session = await this.sessionService.createSession(userId, refreshTokenHash, expiresAt);
-
-    const sessionId: string = session._id || '';
-
-    // 6. Issue final access and refresh tokens linked to session._id
-    const accessToken = this.tokenService.generateAccessToken({
-      sub: userId,
-      sid: sessionId,
-      type: 'access',
-    });
-
+    // 6. Generate Refresh Token using the EXACT sessionId
     const refreshToken = this.tokenService.generateRefreshToken({
       sub: userId,
       sid: sessionId,
       type: 'refresh',
+    });
+
+    // 7. Hash the exact Refresh Token that will be returned to the client
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+
+    // 8. Create session in DB with the predetermined sessionId
+    await this.sessionService.createSession(
+      userId,
+      refreshTokenHash,
+      expiresAt,
+      sessionId, // 👈 پاس دادن sessionId قطعی به SessionService
+    );
+
+    // 9. Generate Access Token
+    const accessToken = this.tokenService.generateAccessToken({
+      sub: userId,
+      sid: sessionId,
+      type: 'access',
     });
 
     return {

@@ -17,14 +17,7 @@ export class CouchDbService implements OnModuleInit, UserRepository {
   private couch!: nano.ServerScope;
 
   /**
-   * Single CouchDB database for IAM documents:
-   *
-   * - user
-   * - email_claim
-   * - migration
-   * - session
-   * - verification_token
-   * - audit
+   * Single CouchDB database for IAM documents
    */
   private db!: nano.DocumentScope<IamDocument>;
 
@@ -71,35 +64,66 @@ export class CouchDbService implements OnModuleInit, UserRepository {
   }
 
   /**
+   * Find user by ID.
+   */
+  async findById(id: string): Promise<UserDocument | null> {
+    try {
+      const doc = await this.db.get(id);
+      if (doc && (doc as UserDocument).type === 'user') {
+        return doc as UserDocument;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Update existing user document.
+   */
+  async updateUser(id: string, user: Partial<UserDocument>): Promise<void> {
+    const existingDoc = await this.db.get(id);
+
+    // ۱. بررسی اینکه آیا سند دریافت شده واقعاً سند کاربر است یا خیر
+    if (!existingDoc || existingDoc.type !== 'user') {
+      throw new Error(`User document with id ${id} not found.`);
+    }
+
+    // ۲. ساخت سند جدید با تایپ صریح UserDocument
+    const updatedUserDocument: UserDocument = {
+      ...existingDoc,
+      ...user,
+      _id: id,
+      _rev: existingDoc._rev,
+      type: 'user', // مشخص کردن صریح نوع سند
+      updatedAt: new Date().toISOString(),
+    };
+
+    await this.db.insert(updatedUserDocument);
+  }
+
+  /**
    * Reserve email address atomically.
-   *
-   * CouchDB guarantees unique _id values.
-   *
-   * Example:
-   *
-   * email:test@example.com
    */
   async claimEmail(email: string, userId: string): Promise<void> {
     const normalizedEmail = email.trim().toLowerCase();
+    const now = new Date().toISOString();
 
     await this.db.insert({
       _id: `email:${normalizedEmail}`,
       type: 'email_claim',
       email: normalizedEmail,
       userId,
-      createdAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
     });
   }
 
   /**
    * Remove email reservation.
-   *
-   * Used when user creation fails
-   * after email was claimed.
    */
   async releaseEmailClaim(email: string): Promise<void> {
     const normalizedEmail = email.trim().toLowerCase();
-
     const id = `email:${normalizedEmail}`;
 
     try {
@@ -112,21 +136,13 @@ export class CouchDbService implements OnModuleInit, UserRepository {
       await this.db.destroy(id, document._rev);
     } catch {
       /**
-       * Nothing to release.
-       *
-       * Possible reasons:
-       * - document does not exist
-       * - already removed
+       * Nothing to release if not found or already deleted.
        */
     }
   }
 
   /**
-   * Exposes CouchDB connection for:
-   *
-   * - migrations
-   * - indexes
-   * - infrastructure tasks
+   * Exposes CouchDB connection.
    */
   getDatabase(): nano.DocumentScope<IamDocument> {
     return this.db;

@@ -12,14 +12,18 @@ export class SessionService {
 
   /**
    * Creates a new authenticated session.
+   * Accepts an optional customSessionId to keep JWT payload and DB document IDs aligned.
    */
   async createSession(
     userId: string,
     refreshTokenHash: string,
     expiresAt: string,
+    customSessionId?: string, // 👈 پارامتر چهارم اضافه شد
   ): Promise<SessionDocument> {
     const now = new Date().toISOString();
-    const sessionId = `session:${uuidv7()}`;
+
+    // اگر customSessionId پاس داده شده بود از همان استفاده می‌کند، در غیر این صورت یک UUID جدید می‌سازد
+    const sessionId = customSessionId || `session:${uuidv7()}`;
 
     const sessionData: CreateSessionData = {
       type: 'session',
@@ -52,7 +56,6 @@ export class SessionService {
    * Revokes a session by delegate to repository or updating status.
    */
   async revokeSession(sessionId: string): Promise<void> {
-    // از متد مستقیم ریپازیتوری شما استفاده می‌کند
     await this.sessionRepository.revokeSession(sessionId);
   }
 }

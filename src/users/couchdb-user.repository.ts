@@ -62,6 +62,49 @@ export class CouchDbUserRepository implements UserRepository {
 
   /**
    * ------------------------------------------------------------------------
+   * Find User By ID (اضافه شده برای تکمیل اینترفیس)
+   * ------------------------------------------------------------------------
+   */
+  async findById(id: string): Promise<UserDocument | null> {
+    try {
+      const doc = await this.db.get(id);
+
+      if (!isUserDocument(doc)) {
+        return null;
+      }
+
+      return doc;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * ------------------------------------------------------------------------
+   * Update User Document (اضافه شده برای تکمیل اینترفیس)
+   * ------------------------------------------------------------------------
+   */
+  async updateUser(id: string, user: Partial<UserDocument>): Promise<void> {
+    const existingDoc = await this.db.get(id);
+
+    if (!isUserDocument(existingDoc)) {
+      throw new Error(`User document with id ${id} not found.`);
+    }
+
+    const updatedUserDocument: UserDocument = {
+      ...existingDoc,
+      ...user,
+      _id: id,
+      _rev: existingDoc._rev,
+      type: 'user',
+      updatedAt: new Date().toISOString(),
+    };
+
+    await this.db.insert(updatedUserDocument);
+  }
+
+  /**
+   * ------------------------------------------------------------------------
    * Atomically Reserve Email (email_claim)
    * ------------------------------------------------------------------------
    */
@@ -75,7 +118,7 @@ export class CouchDbUserRepository implements UserRepository {
         email,
         userId,
         createdAt: now,
-        updatedAt: now, // اضافه شد تا با BaseDocument همخوانی داشته باشد
+        updatedAt: now,
       });
     } catch (error: unknown) {
       if (
@@ -102,7 +145,6 @@ export class CouchDbUserRepository implements UserRepository {
       const doc = await this.db.get(claimId);
       await this.db.destroy(doc._id, doc._rev);
     } catch (error: unknown) {
-      // اگر ۴۰۴ باشد به این معنی است که سند وجود ندارد یا قبلا پاک شده، پس نیازی به Throw نیست
       if (
         typeof error === 'object' &&
         error !== null &&

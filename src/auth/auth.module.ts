@@ -9,13 +9,15 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { SessionModule } from '../sessions/session.module';
 import { UsersModule } from '../users/users.module';
+import { TokenModule } from './token.module';
 
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({}),
     UsersModule,
-    SessionModule, // <-- اصلاح شد
+    SessionModule,
+    TokenModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
