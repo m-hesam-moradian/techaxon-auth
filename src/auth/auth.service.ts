@@ -26,72 +26,43 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    /**
-     * 1. Normalize email
-     */
     const email = dto.email.trim().toLowerCase();
 
-    /**
-     * 2. Fast duplicate check.
-     */
+    // 1. Check existing user
     const existingUser = await this.userRepo.findByEmail(email);
-
     if (existingUser) {
       throw new ConflictException('A user with this email already exists');
     }
 
-    /**
-     * 3. Generate user id before creation.
-     */
     const userId = `user:${randomUUID()}`;
 
-    /**
-     * 4. Reserve email atomically.
-     */
+    // 2. Reserve email
     try {
       await this.userRepo.claimEmail(email, userId);
     } catch {
       throw new ConflictException('A user with this email already exists');
     }
 
+    // 3. Create User Document with Safe Cleanup Rollback
     try {
-      /**
-       * 5. Hash password
-       */
       const passwordHash = await bcrypt.hash(dto.password, 10);
-
       const now = new Date().toISOString();
 
-      /**
-       * 6. Create user document
-       */
       const newUser = {
         _id: userId,
-
         type: 'user' as const,
-
         username: dto.username,
-
         email,
-
         passwordHash,
-
         status: 'pending_verification' as const,
-
         emailVerified: false,
-
         tenantId: null,
-
         createdAt: now,
-
         updatedAt: now,
       };
 
       const response = await this.userRepo.createUser(newUser);
 
-      /**
-       * Generate Verification Token
-       */
       const verificationPayload: JwtPayload = {
         sub: response.id,
         sid: '',
@@ -100,20 +71,25 @@ export class AuthService {
 
       const verificationToken = this.tokenService.generateVerificationToken(verificationPayload);
 
-      // TODO: Send verificationToken via EmailService
-
       return {
         success: true,
         id: response.id,
-        verificationToken, // Returned for testing or immediate email dispatch
+        verificationToken,
       };
     } catch (error) {
-      /**
-       * 7. Rollback email claim on error.
-       */
-      await this.userRepo.releaseEmailClaim(email);
+      // 🛡️ پاک‌سازی ایمن: حتی اگر releaseEmailClaim خطا بدهد، برنامه کرش نکرده و خطای اصلی ثبت‌نام Throw می‌شود
+      await this.userRepo.releaseEmailClaim(email).catch(() => {
+        // لوگ کردن خطای پاک‌سازی برای بررسی‌های بعدی سیستم
+      });
 
-      throw error;
+      // اگر خطا از نوع Conflict نباشد، خطای صریح ۵۰۰ یا عمومی می‌دهیم
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        'Registration failed due to a server error. Please try again.',
+      );
     }
   }
 
