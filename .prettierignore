@@ -10,3 +10,6 @@ dist
 
 # Env files
 .env*
+
+# Markdown files
+.md
