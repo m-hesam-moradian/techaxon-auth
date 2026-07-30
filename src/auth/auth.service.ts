@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 
 import { UserRepository } from '../users/user.repository';
@@ -30,11 +30,26 @@ export class AuthService {
       updatedAt: now,
     };
 
-    const response = await this.userRepo.createUser(newUser);
+    try {
+      const response = await this.userRepo.createUser(newUser);
 
-    return {
-      success: true,
-      id: response.id,
-    };
+      return {
+        success: true,
+        id: response.id,
+      };
+    } catch (error: unknown) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'statusCode' in error &&
+        error.statusCode === 409
+      ) {
+        throw new ConflictException({
+          code: 'EMAIL_ALREADY_EXISTS',
+          message: 'This email is already registered.',
+        });
+      }
+      throw error;
+    }
   }
 }
