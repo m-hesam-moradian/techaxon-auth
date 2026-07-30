@@ -35,11 +35,7 @@ export class CouchDbService implements OnModuleInit, UserRepository {
    * Create user document.
    */
   async createUser(user: CreateUserData): Promise<CreateUserResult> {
-    const document: UserDocument = {
-      ...user,
-      _id: `user:${user.email}`,
-    };
-    const response = await this.db.insert(document);
+    const response = await this.db.insert(user);
 
     return {
       id: response.id,
