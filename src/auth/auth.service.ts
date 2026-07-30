@@ -76,7 +76,7 @@ export class AuthService {
         id: response.id,
         verificationToken,
       };
-    } catch (error: unknown) {
+    } catch (error: any) {
       // 🛡️ پاک‌سازی ایمن: حتی اگر releaseEmailClaim خطا بدهد، برنامه کرش نکرده و خطای اصلی ثبت‌نام Throw می‌شود
       await this.userRepo.releaseEmailClaim(email).catch(() => {
         // لوگ کردن خطای پاک‌سازی برای بررسی‌های بعدی سیستم
@@ -86,12 +86,8 @@ export class AuthService {
       if (error instanceof ConflictException) {
         throw error;
       }
-      if (
-        error &&
-        typeof error === 'object' &&
-        'statusCode' in error &&
-        error.statusCode === 409
-      ) {
+
+      if (error.statusCode === 409) {
         throw new ConflictException({
           code: 'EMAIL_ALREADY_EXISTS',
           message: 'This email is already registered.',
