@@ -1,11 +1,24 @@
 // src/auth/auth.controller.ts
 
-import { Controller, Post, Get, Body, Query, HttpCode, HttpStatus, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Query,
+  HttpCode,
+  HttpStatus,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import type { Request } from 'express';
 
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { LogoutDto } from './dto/logout.dto';
+import { JwtAuthGuard, AuthenticatedUser } from './guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -48,5 +61,42 @@ export class AuthController {
     const ipAddress = req.ip || req.socket.remoteAddress;
 
     return await this.authService.login(dto, { userAgent, ipAddress });
+  }
+
+  /**
+   * ------------------------------------------------------------------------
+   * Get Current Authenticated User Profile
+   * GET /auth/me
+   * ------------------------------------------------------------------------
+   */
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  getProfile(@Req() req: Request & { user: AuthenticatedUser }) {
+    return req.user;
+  }
+
+  /**
+   * ------------------------------------------------------------------------
+   * Refresh Access Token
+   * POST /auth/refresh
+   * ------------------------------------------------------------------------
+   */
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  async refresh(@Body() dto: RefreshTokenDto) {
+    return await this.authService.refreshToken(dto.refreshToken); // نام متد AuthService خود را چک کنید
+  }
+  /**
+   * ------------------------------------------------------------------------
+   * Logout User
+   * POST /auth/logout
+   * ------------------------------------------------------------------------
+   */
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async logout(@Body() dto: LogoutDto) {
+    return await this.authService.logout(dto.sessionId);
   }
 }

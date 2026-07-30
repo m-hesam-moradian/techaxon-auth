@@ -1,7 +1,7 @@
 ### 5a. Access Protected Route - Success Case
 # @name getProfileSuccess
 GET http://localhost:3000/auth/me
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyOjUzZWJjMWIwLWFiNDItNDM1ZS04MDlmLTU3OTk3MDFlMTE1OSIsInNpZCI6InNlc3Npb246YWRkMjRjN2UtZjQzNC00MmYxLWFlOTUtMWMzMTM0NDY3NzlmIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc4NTMzMTk1MiwiZXhwIjoxNzg1MzMyODUyLCJhdWQiOiJ0ZWNoYXhvbi1hcGkiLCJpc3MiOiJ0ZWNoYXhvbi1pZHAifQ.ynizC9lLHCV17x6FFowovTzADvNAaiEvXqhtqqt28rk 
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyOjM0YzNmYTNmLWQyNTktNDBmYi05YWI1LThkODlhZjkyZmJjYyIsInNpZCI6InNlc3Npb246ZmE1ZjZiZTAtZWI5Mi00ZWRjLWFhMDItYjdkNDA4NWRmNDRjIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc4NTQyNDg4NCwiZXhwIjoxNzg1NDI1Nzg0LCJhdWQiOiJ0ZWNoYXhvbi1hcGkiLCJpc3MiOiJ0ZWNoYXhvbi1pZHAifQ.cP6-tuYa7mXOzCFCXheAP5l7IuKlamkRO31sr78y5T0
 Content-Type: application/json
 
 ###
@@ -10,10 +10,8 @@ Content-Type: application/json
 EXPECTED API RESPONSE (200 OK):
 ===================================================================
 {
-  "userId": "user:53ebc1b0-ab42-435e-809f-5799701e1159",
-  "sessionId": "session:add24c7e-f434-42f1-ae95-1c313446779f",
-  "email": "saeed@example.com",
-  "username": "saeed"
+  "userId": "user:34c3fa3f-d259-40fb-9ab5-8d89af92fbcc",
+  "sessionId": "session:fa5f6be0-eb92-4edc-aa02-b7d4085df44c"
 }
 */
 
