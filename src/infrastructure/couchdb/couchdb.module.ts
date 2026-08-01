@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 
 import { CouchDbService } from './couchdb.service';
+import { CouchDbIndexService } from './couchdb-index.service';
 import { MigrationRunner } from './migrations/migration.runner';
 import { MigrationRepository } from './migrations/migration.repository';
 
@@ -10,6 +11,7 @@ import { UserRepository } from '../../users/user.repository';
 @Module({
   providers: [
     CouchDbService,
+    CouchDbIndexService,
 
     MigrationRepository,
     MigrationRunner,
@@ -19,6 +21,6 @@ import { UserRepository } from '../../users/user.repository';
       useExisting: CouchDbService,
     },
   ],
-  exports: [CouchDbService, UserRepository],
+  exports: [CouchDbService, CouchDbIndexService, UserRepository],
 })
 export class CouchdbModule {}
