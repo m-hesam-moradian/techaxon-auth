@@ -1,3 +1,6 @@
+jest.mock('uuid', () => ({
+  v7: () => 'mocked-uuid-v7-string',
+}));
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException } from '@nestjs/common';
 
@@ -50,7 +53,7 @@ describe('AuthService', () => {
         {
           provide: TokenService,
           useValue: mockTokenService,
-        }
+        },
       ],
     }).compile();
 
