@@ -26,8 +26,13 @@ export class CouchDbService implements OnModuleInit, UserRepository {
     private readonly config: ConfigType<typeof couchdbConfig>,
   ) {}
 
-  onModuleInit() {
+  async onModuleInit() {
     this.couch = nano(this.config.url);
+    try {
+      await this.couch.db.create(this.config.database);
+    } catch {
+      // Database already exists
+    }
     this.db = this.couch.use(this.config.database);
   }
 
@@ -145,6 +150,12 @@ export class CouchDbService implements OnModuleInit, UserRepository {
    * Exposes CouchDB connection.
    */
   getDatabase(): nano.DocumentScope<IamDocument> {
+    if (!this.db) {
+      if (!this.couch) {
+        this.couch = nano(this.config.url);
+      }
+      this.db = this.couch.use(this.config.database);
+    }
     return this.db;
   }
 }
