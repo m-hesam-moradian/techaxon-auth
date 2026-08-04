@@ -1,98 +1,310 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Techaxon IAM
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Techaxon IAM is a NestJS-based authentication and identity API backed by CouchDB. It provides user registration, email verification, JWT authentication, session management, and protected user profile access.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Table of Contents
+ 
+- [Features](#features)
+- [API Endpoints](#api-endpoints)
+- [Tech Stack](#tech-stack)
+- [Architecture & Project Structure](#architecture--project-structure)
+- [Getting Started](#getting-started)
+- [Installation](#installation)
+- [Running the Application](#running-the-application)
+- [Available Scripts](#available-scripts)
+- [Environment Variables](#environment-variables)
+- [Authentication Flow](#authentication-flow)
+- [Testing](#testing)
+- [API Examples](#api-examples)
+---
 
-## Description
+## Features
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- User registration with email, password, and optional username
+- BCrypt password hashing
+- Atomic email reservation using CouchDB email claim documents
+- JWT-based email verification
+- Login restricted to verified and active users
+- JWT access and refresh token authentication
+- CouchDB-backed sessions with hashed refresh tokens
+- Protected user profile endpoint using Bearer access tokens
+- Session revocation on logout
+- Revoked sessions cannot access protected routes or refresh tokens
+- Automatic CouchDB index migrations on application startup
 
-## Project setup
+### Database Indexes
 
-```bash
-$ pnpm install
+The application creates and manages CouchDB indexes for:
+
+- User email lookup
+- Session user ID lookup
+- Session refresh-token hash lookup
+- Session expiration lookup
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/` | Health check endpoint |
+| POST | `/auth/register` | Register a new user |
+| GET | `/auth/verify-email?token=...` | Verify user email |
+| POST | `/auth/login` | Authenticate user and create a session |
+| GET | `/auth/me` | Get authenticated user profile |
+| POST | `/auth/refresh` | Refresh access token |
+| POST | `/auth/logout` | Revoke current session |
+
+---
+
+## Tech Stack
+
+- **Language:** TypeScript
+- **Runtime:** Node.js
+- **Framework:** NestJS 11
+- **HTTP Adapter:** Express (`@nestjs/platform-express`)
+- **Database:** CouchDB
+- **CouchDB Client:** nano
+- **Authentication:**
+  - `@nestjs/jwt`
+  - `jsonwebtoken`
+  - Passport JWT
+- **Password Hashing:** bcryptjs
+- **Validation:**
+  - class-validator
+  - class-transformer
+- **Package Manager:** pnpm (`pnpm@11.18.0`)
+- **Testing:**
+  - Jest
+  - Supertest
+- **Code Quality:**
+  - ESLint
+  - Prettier
+
+---
+
+## Architecture & Project Structure
+
+The project follows a modular NestJS architecture with a controller → service → repository layering approach:
+
+```
+HTTP Request
+      |
+      v
+AuthController
+      |
+      v
+AuthService / TokenService / SessionService
+      |
+      v
+Repository Abstractions
+      |
+      v
+CouchDB Implementations
+      |
+      v
+CouchDB Documents
+```
+This maps directly onto the folder structure:
+
+```
+src/
+├── auth/                    # AuthModule — endpoints, JWT strategies, token generation/validation, guards
+├── users/                   # UsersModule — user repository abstraction and CouchDB implementation
+├── sessions/                # SessionModule — session creation, refresh token storage, validation, revocation
+├── infrastructure/
+│   └── couchdb/             # CouchDBModule — connection setup, document models, migrations
+├── app.module.ts            # Root application module
+└── main.ts                  # Application bootstrap
+ 
+docs/
+└── api/                     # API request examples
+ 
+test/                        # End-to-end tests
+ 
+*.spec.ts                    # Unit tests
+ 
+.env.example                 # Environment configuration example
+ 
+package.json                 # Dependencies and scripts
 ```
 
-## Compile and run the project
+---
+
+## Getting Started
+
+### Prerequisites
+
+Make sure you have:
+
+- Node.js installed
+- pnpm installed
+- A running CouchDB instance
+
+The application expects the CouchDB database defined by `COUCHDB_DATABASE` to already exist.
+
+> The application creates required indexes during startup but does not create the database itself.
+
+---
+
+## Installation
+
+Install dependencies:
 
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+pnpm install
 ```
 
-## Run tests
+Create a `.env` file using `.env.example` as a reference:
 
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+cp .env.example .env
 ```
 
-## Deployment
+Configure your CouchDB connection and JWT settings.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+---
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Running the Application
+
+### Development mode
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+pnpm start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+The server runs on:
 
-## Resources
+```
+http://localhost:3000
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+unless another port is configured using the `PORT` environment variable.
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Production build
 
-## Support
+Build the application:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+pnpm build
+```
 
-## Stay in touch
+Start the production server:
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```bash
+pnpm start:prod
+```
 
-## License
+---
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## Available Scripts
+
+| Command | Description |
+|---|---|
+| `pnpm start:dev` | Start development server with watch mode |
+| `pnpm build` | Build production application |
+| `pnpm start:prod` | Run production build |
+| `pnpm test` | Run unit tests |
+| `pnpm test:e2e` | Run end-to-end tests |
+| `pnpm test:cov` | Run tests with coverage |
+| `pnpm lint` | Run ESLint |
+
+---
+
+## Environment Variables
+
+### CouchDB
+
+```env
+COUCHDB_URL=
+COUCHDB_DATABASE=
+```
+
+### JWT Configuration
+
+```env
+JWT_ACCESS_SECRET=
+JWT_REFRESH_SECRET=
+JWT_VERIFICATION_SECRET=
+
+JWT_ACCESS_EXPIRES_IN=
+JWT_REFRESH_EXPIRES_IN=
+JWT_VERIFICATION_EXPIRES_IN=
+
+JWT_ISSUER=
+JWT_AUDIENCE=
+```
+
+### Server
+
+```env
+PORT=3000
+```
+
+---
+
+## Authentication Flow
+
+### Registration
+
+1. User submits email, password, and optional username.
+2. Password is hashed using BCrypt.
+3. Email ownership is reserved atomically in CouchDB.
+4. A verification JWT is generated.
+5. The user verifies their email using the verification token.
+
+### Login
+
+1. User submits verified credentials.
+2. Credentials are validated.
+3. Access and refresh JWTs are generated.
+4. Refresh token information is stored as a hashed session record in CouchDB.
+
+### Authenticated Requests
+
+Protected routes require a Bearer access token:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+### Logout
+
+Logging out revokes the current session.
+
+Revoked sessions cannot:
+
+- Access protected routes
+- Refresh access tokens
+
+---
+
+## Testing
+
+Run unit tests:
+
+```bash
+pnpm test
+```
+
+Run end-to-end tests:
+
+```bash
+pnpm test:e2e
+```
+
+Generate test coverage:
+
+```bash
+pnpm test:cov
+```
+
+---
+
+## API Examples
+
+HTTP request examples for the authentication flow are available in:
+
+```
+docs/api/
+```
