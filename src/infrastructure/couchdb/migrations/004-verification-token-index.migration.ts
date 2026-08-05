@@ -1,8 +1,8 @@
 import { CouchDbService } from '../couchdb.service';
 import type { CouchDbMigration } from './migration.interface';
 
-export class ClaimEmailIndexMigration implements CouchDbMigration {
-  readonly name = '003-claim-email-index';
+export class VerificationTokenIndexMigration implements CouchDbMigration {
+  readonly name = 'iam_tokens';
 
   constructor(private readonly couchDbService: CouchDbService) {}
 
@@ -10,12 +10,12 @@ export class ClaimEmailIndexMigration implements CouchDbMigration {
     const db = this.couchDbService.getDatabase();
 
     await db.createIndex({
-      name: 'idx_claim_email',
+      name: 'idx_verification_token',
       type: 'json',
       index: {
-        fields: ['type', 'email', 'status'],
+        fields: ['type', 'token', 'status'],
       },
-      ddoc: 'idx_claim_email',
+      ddoc: 'iam_tokens',
     });
   }
 }

@@ -2,7 +2,7 @@ import { CouchDbService } from '../couchdb.service';
 import type { CouchDbMigration } from './migration.interface';
 
 export class UserEmailIndexMigration implements CouchDbMigration {
-  name = '001-user-email-index';
+  name = 'iam_users';
 
   constructor(private readonly couchDbService: CouchDbService) {}
 
@@ -10,11 +10,12 @@ export class UserEmailIndexMigration implements CouchDbMigration {
     const db = this.couchDbService.getDatabase();
 
     await db.createIndex({
-      name: 'user-email-index',
+      name: 'idx_user_email',
       type: 'json',
       index: {
         fields: ['type', 'email'],
       },
+      ddoc: 'iam_users',
     });
   }
 }

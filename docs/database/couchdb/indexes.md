@@ -34,7 +34,7 @@ curl -X POST <DB_URL>/_index \
   -d '{
     "index": {"fields": ["type", "email"]},
     "name": "idx_user_email",
-    "ddoc": "idx_user_email",
+    "ddoc": "iam_users",
     "type": "json"
   }'
 ```
@@ -46,7 +46,7 @@ curl -X POST <DB_URL>/_index \
   -d '{
     "index": {"fields": ["type", "email", "status"]},
     "name": "idx_claim_email",
-    "ddoc": "idx_claim_email",
+    "ddoc": "iam_claims",
     "type": "json"
   }'
 ```
@@ -58,7 +58,7 @@ curl -X POST <DB_URL>/_index \
   -d '{
     "index": {"fields": ["type", "userId", "status"]},
     "name": "idx_session_user",
-    "ddoc": "idx_session_user",
+    "ddoc": "iam_sessions",
     "type": "json"
   }'
 ```
@@ -70,7 +70,7 @@ curl -X POST <DB_URL>/_index \
   -d '{
     "index": {"fields": ["type", "status", "expiresAt"]},
     "name": "idx_session_cleanup",
-    "ddoc": "idx_session_cleanup",
+    "ddoc": "iam_sessions",
     "type": "json"
   }'
 ```
@@ -82,7 +82,7 @@ curl -X POST <DB_URL>/_index \
   -d '{
     "index": {"fields": ["type", "token", "status"]},
     "name": "idx_verification_token",
-    "ddoc": "idx_verification_token",
+    "ddoc": "iam_tokens",
     "type": "json"
   }'
 ```

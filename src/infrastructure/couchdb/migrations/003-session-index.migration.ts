@@ -2,7 +2,7 @@ import { CouchDbService } from '../couchdb.service';
 import type { CouchDbMigration } from './migration.interface';
 
 export class SessionIndexMigration implements CouchDbMigration {
-  readonly name = '002-session-index';
+  readonly name = 'iam_sessions';
 
   constructor(private readonly couchDbService: CouchDbService) {}
 
@@ -23,6 +23,7 @@ export class SessionIndexMigration implements CouchDbMigration {
       index: {
         fields: ['type', 'userId'],
       },
+      ddoc: 'iam_sessions',
     });
 
     /**
@@ -36,6 +37,7 @@ export class SessionIndexMigration implements CouchDbMigration {
       index: {
         fields: ['type', 'refreshTokenHash'],
       },
+      ddoc: 'iam_sessions',
     });
 
     /**
@@ -49,6 +51,25 @@ export class SessionIndexMigration implements CouchDbMigration {
       index: {
         fields: ['type', 'expiresAt'],
       },
+      ddoc: 'iam_sessions',
+    });
+    // Hesam
+    await db.createIndex({
+      name: 'idx_session_user',
+      type: 'json',
+      index: {
+        fields: ['type', 'userId', 'status'],
+      },
+      ddoc: 'iam_sessions',
+    });
+    // Hesam
+    await db.createIndex({
+      name: 'idx_session_cleanup',
+      type: 'json',
+      index: {
+        fields: ['type', 'status', 'expiresAt'],
+      },
+      ddoc: 'iam_sessions',
     });
 
     console.log('✓ Session indexes created.');

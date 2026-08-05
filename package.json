@@ -79,12 +79,6 @@
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
-    "moduleNameMapper": {
-      "^uuid$": "uuid"
-    },
-    "transformIgnorePatterns": [
-      "/node_modules/(?!(uuid)/)"
-    ],
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],
