@@ -8,6 +8,7 @@
    sync/pull from upstream and continue building on top of it. Installing a
    package yourself and committing it causes `package.json` drift and merge
    conflicts across contributors.
+   - **CRITICAL:** Before proposing or installing any new package, you must explicitly state why the package is needed, why it is the best practice to use it, and wait for the user's explicit approval. Do not install it automatically.
 2. Don't rebuild or fork the base project boilerplate independently — always
    sync from upstream's skeleton/boilerplate instead of generating a new one.
 
@@ -20,6 +21,7 @@
 - `hotfix/*` → urgent production fixes only; merge into `main`, then
   back-merge into `develop` so both stay in sync.
 - No direct commits to `main` or `develop` — everything lands via PR/MR.
+- **Always Sync Upstream First:** Before starting a new feature branch or task, always execute `git fetch upstream` and sync/rebase onto `upstream/main` (`https://github.com/saeedhei/techaxon-iam.git`) to ensure all work is built on top of the latest upstream code.
 
 ## 3. Type Safety
 
@@ -141,3 +143,10 @@
     whenever the underlying code changes; treat stale docs as a bug.
 32. Any new CouchDB index must be documented (name, type, fields, purpose,
     and a sample `curl` command to create it), not just implemented in code.
+33. **Read documentation before coding:** Before starting any coding task,
+    always explore the `docs/` folder and read all existing documentation and rules
+    to ensure full alignment before writing any code.
+34. **Sync upstream before new branch/task:** Before starting a new feature
+    branch or task, always run `git fetch upstream` and pull/rebase from
+    `upstream/main` (`https://github.com/saeedhei/techaxon-iam`) to build on top
+    of the latest code updates and prevent merge friction.
