@@ -26,13 +26,8 @@ export class CouchDbService implements OnModuleInit, UserRepository {
     private readonly config: ConfigType<typeof couchdbConfig>,
   ) {}
 
-  async onModuleInit() {
+  onModuleInit() {
     this.couch = nano(this.config.url);
-    try {
-      await this.couch.db.create(this.config.database);
-    } catch {
-      // Database already exists
-    }
     this.db = this.couch.use(this.config.database);
   }
 
