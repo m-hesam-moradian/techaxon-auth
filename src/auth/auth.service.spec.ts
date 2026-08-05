@@ -1,8 +1,13 @@
+jest.mock('uuid', () => ({
+  v7: () => 'mocked-uuid-v7-string',
+}));
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException } from '@nestjs/common';
 
 import { AuthService } from './auth.service';
 import { UserRepository } from '../users/user.repository';
+import { SessionService } from '../sessions/session.service';
+import { TokenService } from './token.service';
 
 describe('AuthService', () => {
   let authService: AuthService;
@@ -21,12 +26,33 @@ describe('AuthService', () => {
   };
 
   beforeEach(async () => {
+    const mockSessionService = {
+      createSession: jest.fn(),
+      findSessionById: jest.fn(),
+      revokeSession: jest.fn(),
+    };
+    const mockTokenService = {
+      generateAccessToken: jest.fn(),
+      generateRefreshToken: jest.fn(),
+      generateVerificationToken: jest.fn(),
+      verifyAccessToken: jest.fn(),
+      verifyRefreshToken: jest.fn(),
+      verifyVerificationToken: jest.fn(),
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         {
           provide: UserRepository,
           useValue: mockUserRepository,
+        },
+        {
+          provide: SessionService,
+          useValue: mockSessionService,
+        },
+        {
+          provide: TokenService,
+          useValue: mockTokenService,
         },
       ],
     }).compile();

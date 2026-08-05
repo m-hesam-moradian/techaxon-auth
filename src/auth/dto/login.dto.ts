@@ -1,6 +1,4 @@
-// src/auth/dto/login.dto.ts
-
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class LoginDto {
   @IsEmail({}, { message: 'ایمیل وارد شده معتبر نیست' })
@@ -11,4 +9,17 @@ export class LoginDto {
   @IsNotEmpty()
   @MinLength(8, { message: 'رمز عبور باید حداقل ۸ کاراکتر باشد' })
   password!: string;
+
+  @IsOptional()
+  @IsString()
+  clientId?: string;
+
+  @IsOptional()
+  @IsString()
+  redirectUri?: string;
+
+  @IsOptional()
+  @IsString()
+  state?: string;
 }
+

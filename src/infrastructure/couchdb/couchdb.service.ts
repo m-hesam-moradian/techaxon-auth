@@ -145,6 +145,12 @@ export class CouchDbService implements OnModuleInit, UserRepository {
    * Exposes CouchDB connection.
    */
   getDatabase(): nano.DocumentScope<IamDocument> {
+    if (!this.db) {
+      if (!this.couch) {
+        this.couch = nano(this.config.url);
+      }
+      this.db = this.couch.use(this.config.database);
+    }
     return this.db;
   }
 }
