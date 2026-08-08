@@ -2,16 +2,20 @@ jest.mock('uuid', () => ({
   v7: () => 'mocked-uuid-v7-string',
 }));
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
 
 import { AuthService } from './auth.service';
 import { UserRepository } from '../users/user.repository';
 import { SessionService } from '../sessions/session.service';
 import { TokenService } from './token.service';
+import { AuthCodeRepository } from './auth-code.repository';
 
 describe('AuthService', () => {
   let authService: AuthService;
   let userRepo: UserRepository;
+  let authCodeRepo: AuthCodeRepository;
+  let sessionService: SessionService;
+  let tokenService: TokenService;
 
   /**
    * Fake UserRepository implementation.
@@ -23,6 +27,13 @@ describe('AuthService', () => {
     findByEmail: jest.fn(),
     claimEmail: jest.fn(),
     createUser: jest.fn(),
+    releaseEmailClaim: jest.fn(),
+  };
+
+  const mockAuthCodeRepository = {
+    saveAuthCode: jest.fn(),
+    findByCode: jest.fn(),
+    markUsed: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -34,7 +45,7 @@ describe('AuthService', () => {
     const mockTokenService = {
       generateAccessToken: jest.fn(),
       generateRefreshToken: jest.fn(),
-      generateVerificationToken: jest.fn(),
+      generateVerificationToken: jest.fn().mockReturnValue('mock-verification-token'),
       verifyAccessToken: jest.fn(),
       verifyRefreshToken: jest.fn(),
       verifyVerificationToken: jest.fn(),
@@ -54,17 +65,27 @@ describe('AuthService', () => {
           provide: TokenService,
           useValue: mockTokenService,
         },
+        {
+          provide: AuthCodeRepository,
+          useValue: mockAuthCodeRepository,
+        },
       ],
     }).compile();
 
     authService = module.get<AuthService>(AuthService);
-
     userRepo = module.get<UserRepository>(UserRepository);
+    authCodeRepo = module.get<AuthCodeRepository>(AuthCodeRepository);
+    sessionService = module.get<SessionService>(SessionService);
+    tokenService = module.get<TokenService>(TokenService);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // register()
+  // ─────────────────────────────────────────────────────────────────────────
 
   describe('register', () => {
     /**
@@ -112,8 +133,11 @@ describe('AuthService', () => {
      *      |
      *      v
      * createUser()
+     *      |
+     *      v
+     * returns { success, id, verificationToken }
      */
-    it('should successfully create a new user', async () => {
+    it('should successfully create a new user and return verificationToken', async () => {
       mockUserRepository.findByEmail.mockResolvedValue(null);
 
       mockUserRepository.claimEmail.mockResolvedValue(undefined);
@@ -134,6 +158,7 @@ describe('AuthService', () => {
       expect(result).toEqual({
         success: true,
         id: 'new_uuid_123',
+        verificationToken: 'mock-verification-token',
       });
 
       expect(userRepo.claimEmail).toHaveBeenCalledWith('new@example.com', expect.any(String));
@@ -200,7 +225,7 @@ describe('AuthService', () => {
 
       const result = await authService.register(dto);
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         success: true,
         id: 'new_uuid_789',
       });
@@ -233,6 +258,184 @@ describe('AuthService', () => {
       await expect(authService.register(dto)).rejects.toThrow(ConflictException);
 
       expect(userRepo.createUser).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // generateAuthorizationCode()
+  // ─────────────────────────────────────────────────────────────────────────
+
+  describe('generateAuthorizationCode', () => {
+    /**
+     * Test:
+     * Should return a non-empty hex string code.
+     */
+    it('should return a non-empty string code', async () => {
+      mockAuthCodeRepository.saveAuthCode.mockResolvedValue({
+        id: 'auth_code:test-id',
+        rev: '1-abc',
+      });
+
+      const code = await authService.generateAuthorizationCode('user:123', 'client-app');
+
+      expect(typeof code).toBe('string');
+      expect(code.length).toBeGreaterThan(0);
+    });
+
+    /**
+     * Test:
+     * Should persist the auth code document with correct fields.
+     */
+    it('should save auth_code document with correct type, userId, clientId and used=false', async () => {
+      mockAuthCodeRepository.saveAuthCode.mockResolvedValue({
+        id: 'auth_code:test-id',
+        rev: '1-abc',
+      });
+
+      const userId = 'user:abc-123';
+      const clientId = 'my-client';
+
+      await authService.generateAuthorizationCode(userId, clientId);
+
+      expect(authCodeRepo.saveAuthCode).toHaveBeenCalledWith(
+        expect.stringMatching(/^auth_code:/),
+        expect.objectContaining({
+          type: 'auth_code',
+          userId,
+          clientId,
+          used: false,
+        }),
+      );
+    });
+
+    /**
+     * Test:
+     * expiresAt must be ~60 seconds in the future.
+     */
+    it('should set expiresAt to approximately 60 seconds in the future', async () => {
+      mockAuthCodeRepository.saveAuthCode.mockResolvedValue({
+        id: 'auth_code:test-id',
+        rev: '1-abc',
+      });
+
+      const before = Date.now();
+
+      await authService.generateAuthorizationCode('user:123', 'client-app');
+
+      const after = Date.now();
+
+      const [[, savedData]] = (mockAuthCodeRepository.saveAuthCode as jest.Mock).mock.calls;
+      const expiresAt = new Date(savedData.expiresAt as string).getTime();
+
+      // expiresAt should be 60 000ms ahead, with some tolerance for test execution time
+      expect(expiresAt).toBeGreaterThanOrEqual(before + 59_000);
+      expect(expiresAt).toBeLessThanOrEqual(after + 61_000);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // validateRefreshTokenCookie()
+  // ─────────────────────────────────────────────────────────────────────────
+
+  describe('validateRefreshTokenCookie', () => {
+    const VALID_COOKIE = 'valid-refresh-token';
+
+    /**
+     * Test:
+     * Returns userId when token is valid and session is active.
+     */
+    it('should return userId when cookie is valid and session is active', async () => {
+      (tokenService.verifyRefreshToken as jest.Mock).mockResolvedValue({
+        sub: 'user:abc',
+        sid: 'session:xyz',
+        type: 'refresh',
+      });
+
+      (sessionService.findSessionById as jest.Mock).mockResolvedValue({
+        _id: 'session:xyz',
+        status: 'active',
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      });
+
+      const result = await authService.validateRefreshTokenCookie(VALID_COOKIE);
+
+      expect(result).toBe('user:abc');
+    });
+
+    /**
+     * Test:
+     * Returns null when verifyRefreshToken throws (expired / tampered token).
+     */
+    it('should return null when token verification fails', async () => {
+      (tokenService.verifyRefreshToken as jest.Mock).mockRejectedValue(
+        new UnauthorizedException('Invalid token'),
+      );
+
+      const result = await authService.validateRefreshTokenCookie('bad-token');
+
+      expect(result).toBeNull();
+    });
+
+    /**
+     * Test:
+     * Returns null when session does not exist.
+     */
+    it('should return null when session is not found', async () => {
+      (tokenService.verifyRefreshToken as jest.Mock).mockResolvedValue({
+        sub: 'user:abc',
+        sid: 'session:xyz',
+        type: 'refresh',
+      });
+
+      (sessionService.findSessionById as jest.Mock).mockResolvedValue(null);
+
+      const result = await authService.validateRefreshTokenCookie(VALID_COOKIE);
+
+      expect(result).toBeNull();
+    });
+
+    /**
+     * Test:
+     * Returns null when session status is revoked.
+     */
+    it('should return null when session is revoked', async () => {
+      (tokenService.verifyRefreshToken as jest.Mock).mockResolvedValue({
+        sub: 'user:abc',
+        sid: 'session:xyz',
+        type: 'refresh',
+      });
+
+      (sessionService.findSessionById as jest.Mock).mockResolvedValue({
+        _id: 'session:xyz',
+        status: 'revoked',
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      });
+
+      const result = await authService.validateRefreshTokenCookie(VALID_COOKIE);
+
+      expect(result).toBeNull();
+    });
+
+    /**
+     * Test:
+     * Returns null when session is past its expiresAt.
+     */
+    it('should return null when session has expired', async () => {
+      (tokenService.verifyRefreshToken as jest.Mock).mockResolvedValue({
+        sub: 'user:abc',
+        sid: 'session:xyz',
+        type: 'refresh',
+      });
+
+      (sessionService.findSessionById as jest.Mock).mockResolvedValue({
+        _id: 'session:xyz',
+        status: 'active',
+        expiresAt: new Date(Date.now() - 1_000).toISOString(), // already expired
+      });
+
+      const result = await authService.validateRefreshTokenCookie(VALID_COOKIE);
+
+      expect(result).toBeNull();
     });
   });
 });

@@ -10,6 +10,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { SessionModule } from '../sessions/session.module';
 import { UsersModule } from '../users/users.module';
 import { TokenModule } from './token.module';
+import { AuthCodeRepository } from './auth-code.repository';
+import { CouchDbAuthCodeRepository } from './couchdb-auth-code.repository';
 
 @Module({
   imports: [
@@ -20,7 +22,14 @@ import { TokenModule } from './token.module';
     TokenModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    {
+      provide: AuthCodeRepository,
+      useClass: CouchDbAuthCodeRepository,
+    },
+  ],
   exports: [AuthService, JwtStrategy, PassportModule],
 })
 export class AuthModule {}

@@ -6,6 +6,7 @@ import type {
   EmailClaimDocument,
   AuditDocument,
   MigrationDocument,
+  AuthCodeDocument,
 } from './index';
 
 export function isUserDocument(document: IamDocument): document is UserDocument {
@@ -32,6 +33,10 @@ export function isMigrationDocument(document: IamDocument): document is Migratio
 
 export function isAuditDocument(document: IamDocument): document is AuditDocument {
   return document.type === 'audit';
+}
+
+export function isAuthCodeDocument(document: IamDocument): document is AuthCodeDocument {
+  return document.type === 'auth_code';
 }
 
 // ✅ Type Guard

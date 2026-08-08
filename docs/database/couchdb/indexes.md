@@ -6,7 +6,7 @@ This document details the indexing strategy used in our central database (`techa
 
 We use Mango JSON Indexes (`db.find`) for fields requiring exact matches, resulting in fast `O(log N)` lookup speeds.
 
-The application automatically checks and creates these 5 essential indexes using our migration runner:
+The application automatically checks and creates these 6 essential indexes using our migration runner:
 
 1. **`idx_user_email`**: Index on fields `["type", "email"]`
    - Purpose: Used for Login and Register email lookups.
@@ -22,6 +22,9 @@ The application automatically checks and creates these 5 essential indexes using
 
 5. **`idx_verification_token`**: Index on fields `["type", "token", "status"]`
    - Purpose: Used for email verification link handling.
+
+6. **`idx_auth_code_lookup`**: Index on fields `["type", "code", "used"]` (ddoc: `iam_auth_codes`)
+   - Purpose: Used by `CouchDbAuthCodeRepository.findByCode()` during OIDC Authorization Code exchange. Ensures fast lookup of short-lived, single-use auth codes.
 
 ### Manual Index Creation (cURL)
 
@@ -83,6 +86,18 @@ curl -X POST <DB_URL>/_index \
     "index": {"fields": ["type", "token", "status"]},
     "name": "idx_verification_token",
     "ddoc": "iam_tokens",
+    "type": "json"
+  }'
+```
+
+#### 6. `idx_auth_code_lookup`
+```bash
+curl -X POST <DB_URL>/_index \
+  -H "Content-Type: application/json" \
+  -d '{
+    "index": {"fields": ["type", "code", "used"]},
+    "name": "idx_auth_code_lookup",
+    "ddoc": "iam_auth_codes",
     "type": "json"
   }'
 ```

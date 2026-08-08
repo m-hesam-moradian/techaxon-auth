@@ -7,11 +7,12 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { randomUUID } from 'crypto';
+import { randomUUID, randomBytes } from 'crypto';
 
 import { UserRepository } from '../users/user.repository';
 import { SessionService } from '../sessions/session.service';
 import { TokenService } from './token.service';
+import { AuthCodeRepository } from './auth-code.repository';
 
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -23,6 +24,7 @@ export class AuthService {
     private readonly userRepo: UserRepository,
     private readonly sessionService: SessionService,
     private readonly tokenService: TokenService,
+    private readonly authCodeRepo: AuthCodeRepository,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -277,5 +279,69 @@ export class AuthService {
       success: true,
       message: 'Successfully logged out',
     };
+  }
+
+  /**
+   * ------------------------------------------------------------------------
+   * Generate OIDC Authorization Code
+   * ------------------------------------------------------------------------
+   *
+   * Creates a cryptographically random, single-use authorization code
+   * that expires in exactly 60 seconds. Persists it to CouchDB via
+   * AuthCodeRepository (never touches nano directly).
+   */
+  async generateAuthorizationCode(userId: string, clientId: string): Promise<string> {
+    const code = randomBytes(32).toString('hex');
+    const id = `auth_code:${randomUUID()}`;
+    const now = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + 60_000).toISOString();
+
+    await this.authCodeRepo.saveAuthCode(id, {
+      type: 'auth_code',
+      code,
+      userId,
+      clientId,
+      expiresAt,
+      used: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return code;
+  }
+
+  /**
+   * ------------------------------------------------------------------------
+   * Validate Refresh Token Cookie
+   * ------------------------------------------------------------------------
+   *
+   * Verifies the techaxon_refresh_token cookie value.
+   * Returns the userId if the cookie is valid and the session is active,
+   * or null on any failure — caller always falls through to the login view.
+   */
+  async validateRefreshTokenCookie(cookie: string): Promise<string | null> {
+    let payload: JwtPayload;
+
+    try {
+      payload = await this.tokenService.verifyRefreshToken(cookie);
+    } catch {
+      return null;
+    }
+
+    if (payload.type !== 'refresh' || !payload.sub || !payload.sid) {
+      return null;
+    }
+
+    const session = await this.sessionService.findSessionById(payload.sid);
+
+    if (!session || session.status !== 'active') {
+      return null;
+    }
+
+    if (new Date(session.expiresAt) < new Date()) {
+      return null;
+    }
+
+    return payload.sub;
   }
 }
